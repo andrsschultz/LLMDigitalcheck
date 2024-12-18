@@ -52,23 +52,48 @@ def analyze_text_with_llm(law_text, principles):
     checks_list = "\n".join(all_checks)
 
     prompt = (
-        f"""
-        Das folgende Dokument ist ein Gesetz: {law_text}\n\n
-        "Der Digitalcheck unterstützt bei der Erarbeitung von digitaltauglichen Regelungsvorhaben.
-        Beurteile, ob das Gesetz die Prinzipien unten erfüllt. Für jedes Prinzip: Gib an, ob es erfüllt ist, begründe deine Antwort kurz und mache einen Verbesserungsvorschlag.
+    f"""
+    Das folgende Dokument ist ein Gesetz: {law_text}\n\n
+    "Der Digitalcheck unterstützt bei der Erarbeitung von digitaltauglichen Regelungsvorhaben.
+    Beurteile, ob das Gesetz die Prinzipien unten erfüllt. Gib die Antwort in der folgenden JSON-Datenstruktur zurück:
 
-        **Prinzipien:**
-        {checks_list}
+    {{
+      "Digitale Kommunikation": [
+        {{
+          "Prinzip": "technologieoffen",
+          "Erfüllt": true/false/null,
+          "Begründung": "string",
+          "Verbesserungsvorschlag": "string"
+        }},
+        ...
+      ],
+      "Wiederverwendung von Daten & Standards": [
+        {{
+          "Prinzip": "Daten-Austauschverfahren sind geschaffen",
+          "Erfüllt": true/false/null,
+          "Begründung": "string",
+          "Verbesserungsvorschlag": "string"
+        }},
+        ...
+      ],
+      ...
+    }}
 
-        Wenn du keine Aussage treffen kannst, antworte mit 'Das weiß ich nicht'.
-        """
+    Für jedes Prinzip:
+    - `"Erfüllt"`: Gebe `true` zurück, wenn das Prinzip erfüllt ist, `false`, wenn es nicht erfüllt ist, oder `null`, wenn keine Aussage möglich ist.
+    - `"Begründung"`: Erkläre prägnant, warum das Prinzip erfüllt oder nicht erfüllt ist. Zitiere die entsprechende Passage im Gesetz mit Absatz/Satz/Nummer usw.
+    - `"Verbesserungsvorschlag"`: Mach einen kurzen Verbesserungsvorschlag. Wenn das Prinzip erfüllt ist oder kein Aussage möglich gebe `null` zurück."
+
+    **Prinzipien:**
+    {checks_list}
+    """
     )
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
-            timeout=30
+            timeout=120
         )
     except Exception as e:
         return f"Error occurred: {e}"
@@ -87,8 +112,8 @@ interface = gr.Interface(
     fn=gradio_interface,
     inputs=gr.Textbox(lines=20, placeholder="Fügen Sie hier den Gesetzestext ein..."),
     outputs=gr.Markdown(),
-    title="Digitalcheck Analyzer",
-    description="Geben Sie einen Gesetzestext ein, und der Digitalcheck wird prüfen, ob er die definierten Prinzipien erfüllt.",
+    title="Digitalcheck Analyze",
+    description="Geben Sie einen Gesetzestext ein und der Digitalcheck wird prüfen, ob er die definierten Prinzipien erfüllt.",
 )
 
 # Launch the Gradio app
