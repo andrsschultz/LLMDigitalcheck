@@ -6,6 +6,18 @@ import gradio as gr
 # Load environment variables from .env file
 load_dotenv()
 
+# Retrieve the OPENAI_API_KEY
+openai_api_key = os.getenv("OPENAI_API_KEY")
+if not openai_api_key:
+    raise ValueError("OPENAI_API_KEY environment variable is not set.")
+
+#Initialize OpenAI API
+openai = OpenAI(
+    api_key=openai_api_key,  # Use environment variable for API key
+    base_url="https://api.deepinfra.com/v1/openai",  # DeepInfra endpoint
+)
+
+
 # Define Digital Principles
 principles = {
     "Digitale Kommunikation": [
@@ -39,11 +51,6 @@ principles = {
 
 # Function to analyze a law text against principles using OpenAI
 def analyze_text_with_llm(law_text, principles):
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        return "API key not found! Please set the OPENAI_API_KEY environment variable."
-    
-    client = OpenAI(api_key=api_key)
 
     all_checks = []
     for principle_group, checks in principles.items():
@@ -90,10 +97,9 @@ def analyze_text_with_llm(law_text, principles):
     )
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
+        response = openai.chat.completions.create(
+            model="meta-llama/Meta-Llama-3.1-8B-Instruct",  # Specify the model to use
             messages=[{"role": "user", "content": prompt}],
-            timeout=120
         )
     except Exception as e:
         return f"Error occurred: {e}"
