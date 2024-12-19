@@ -62,7 +62,7 @@ def analyze_text_with_llm(law_text, principles):
     f"""
     Das folgende Dokument ist ein Gesetz: {law_text}\n\n
     "Der Digitalcheck unterstützt bei der Erarbeitung von digitaltauglichen Regelungsvorhaben.
-    Beurteile, ob das Gesetz die Prinzipien unten erfüllt. Gib die Antwort in der folgenden JSON-Datenstruktur zurück:
+    Beurteile, ob das Gesetz die Prinzipien unten erfüllt. Gib die Antwort zwingend in der folgenden JSON-Datenstruktur zurück:
 
     {{
       "Digitale Kommunikation": [
@@ -98,7 +98,7 @@ def analyze_text_with_llm(law_text, principles):
 
     try:
         response = openai.chat.completions.create(
-            model="meta-llama/Meta-Llama-3.1-8B-Instruct",  # Specify the model to use
+            model="meta-llama/Llama-3.3-70B-Instruct",  # Specify the model to use
             messages=[{"role": "user", "content": prompt}],
         )
     except Exception as e:
@@ -116,10 +116,10 @@ def gradio_interface(law_text):
 # Create Gradio interface
 interface = gr.Interface(
     fn=gradio_interface,
-    inputs=gr.Textbox(lines=20, placeholder="Fügen Sie hier den Gesetzestext ein..."),
+    inputs=gr.Textbox(lines=20, placeholder="Gesetzestext einfügen..."),
     outputs=gr.Markdown(),
-    title="Digitalcheck Analyze",
-    description="Geben Sie einen Gesetzestext ein und der Digitalcheck wird prüfen, ob er die definierten Prinzipien erfüllt.",
+    title="Digitalcheck KI Analyse",
+    description="Gesetzestext eingeben, um zu prüfen, ob er die definierten Prinzipien des Digitalchecks erfüllt.",
 )
 
 # Launch the Gradio app
