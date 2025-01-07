@@ -47,6 +47,8 @@ principles = {
     ]
 }
 
+# STEP 1 ANALYZING LAW
+
 def analyze_text_with_llm(law_text, principles):
     all_checks = []
     for principle_group, checks in principles.items():
@@ -117,6 +119,7 @@ def analyze_text_with_llm(law_text, principles):
         response = openai.chat.completions.create(
             model="meta-llama/Llama-3.3-70B-Instruct",  # Adjust model if needed
             messages=[{"role": "user", "content": prompt}],
+            response_format={ "type": "json_object" }
         )
         print("\nToken Usage:")
         print(f"Input tokens: {response.usage.prompt_tokens}")
@@ -162,5 +165,104 @@ Zeitpunkt des ersten Vermögensübergangs auf die Stiftung oder den Verein,
 5.
 Wert und Zusammensetzung des Vermögens.
     """
-    result = analyze_text_with_llm(law_text, principles)
-    print(result)
+    
+result = analyze_text_with_llm(law_text, principles)
+print(result)
+
+# STEP 2 PARSING JSON
+import json
+
+try:
+    # Parse the JSON response
+    result_json = json.loads(result)
+    
+    # Extract improvement suggestions
+    improvement_suggestions = []
+    
+    for category, items in result_json.items():
+        for item in items:
+            if item.get("Verbesserungsvorschlag") is not None and item["Verbesserungsvorschlag"] != "null":
+                improvement_suggestions.append({
+                    "category": category,
+                    "principle": item["Prinzip"],
+                    "suggestion": item["Verbesserungsvorschlag"]
+                })
+
+    # Output the result
+    print("\nImprovement Suggestions:")
+    for suggestion in improvement_suggestions:
+        print(f"\nCategory: {suggestion['category']}")
+        print(f"Principle: {suggestion['principle']}")
+        print(f"Suggestion: {suggestion['suggestion']}")
+
+except json.JSONDecodeError as e:
+    print(f"Error parsing JSON response: {e}")
+except Exception as e:
+    print(f"Error processing results: {e}")
+
+
+# STEP 3 AMENDING LAW
+
+def generate_amended_law(law_text, improvement_suggestions):
+    """
+    Generate an amended version of the law text based on improvement suggestions.
+    
+    Args:
+        law_text (str): The original law text
+        improvement_suggestions (list): List of dictionaries containing improvement suggestions
+    
+    Returns:
+        str: The LLM response containing the amended law text
+    """
+    # Format suggestions for the prompt
+    formatted_suggestions = []
+    for suggestion in improvement_suggestions:
+        formatted_suggestions.append(
+            f"- Kategorie '{suggestion['category']}' - {suggestion['principle']}:\n  {suggestion['suggestion']}"
+        )
+    
+    suggestions_text = "\n".join(formatted_suggestions)
+    
+    prompt = f"""
+    Als erfahrener Rechtsexperte, überarbeite bitte den folgenden Gesetzestext unter Berücksichtigung der Verbesserungsvorschläge für die digitale Transformation. 
+    Beachte dabei:
+    - Behalte die juristische Sprache und Struktur bei
+    - Füge neue Absätze ein, wo nötig
+    - Ergänze oder modifiziere bestehende Absätze
+    - Stelle sicher, dass die Änderungen die digitale Transformation unterstützen
+    - Behalte die ursprüngliche Nummerierung bei, füge bei Bedarf Unterpunkte hinzu
+
+    Ursprünglicher Gesetzestext:
+    {law_text}
+
+    Zu berücksichtigende Verbesserungsvorschläge:
+    {suggestions_text}
+
+    Gib den überarbeiteten Gesetzestext in seiner Gesamtheit zurück. Markiere geänderte oder neue Passagen durch [[ ]] Klammern.
+    """
+
+    try:
+        response = openai.chat.completions.create(
+            model="meta-llama/Llama-3.3-70B-Instruct",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        print("\nToken Usage for Law Amendment:")
+        print(f"Input tokens: {response.usage.prompt_tokens}")
+        print(f"Output tokens: {response.usage.completion_tokens}")
+        print(f"Total tokens: {response.usage.total_tokens}")
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        return f"Error generating amended law: {e}"
+
+if __name__ == "__main__":
+    # Previous code remains the same until improvement suggestions are generated
+    
+    # After generating improvement suggestions, create amended law text
+    if improvement_suggestions:
+        print("\nGenerating amended law text based on suggestions...")
+        amended_law = generate_amended_law(law_text, improvement_suggestions)
+        print("\nAmended Law Text:")
+        print(amended_law)
