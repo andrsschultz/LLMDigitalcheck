@@ -118,6 +118,10 @@ def analyze_text_with_llm(law_text, principles):
             model="meta-llama/Llama-3.3-70B-Instruct",  # Adjust model if needed
             messages=[{"role": "user", "content": prompt}],
         )
+        print("\nToken Usage:")
+        print(f"Input tokens: {response.usage.prompt_tokens}")
+        print(f"Output tokens: {response.usage.completion_tokens}")
+        print(f"Total tokens: {response.usage.total_tokens}")
     except Exception as e:
         return f"Error occurred: {e}"
 
