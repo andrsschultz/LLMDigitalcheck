@@ -69,6 +69,7 @@ def analyze_text_with_llm(law_text, principles):
           "Prinzip": "technologieoffen",
           "Erfüllt": true/false/null,
           "Begründung": "string",
+          "Zitat": "string"/null,
           "Verbesserungsvorschlag": "string"
         }}
       ],
@@ -77,6 +78,7 @@ def analyze_text_with_llm(law_text, principles):
           "Prinzip": "Daten-Austauschverfahren sind geschaffen",
           "Erfüllt": true/false/null,
           "Begründung": "string",
+          "Zitat": "string"/null,
           "Verbesserungsvorschlag": "string"
         }}
       ],
@@ -85,6 +87,7 @@ def analyze_text_with_llm(law_text, principles):
           "Prinzip": "Datenschutz-Expertise wurde konsultiert",
           "Erfüllt": true/false/null,
           "Begründung": "string",
+          "Zitat": "string"/null,
           "Verbesserungsvorschlag": "string"
         }}
       ],
@@ -93,6 +96,7 @@ def analyze_text_with_llm(law_text, principles):
           "Prinzip": "Verständlichkeit wurde getestet",
           "Erfüllt": true/false/null,
           "Begründung": "string",
+          "Zitat": "string"/null,
           "Verbesserungsvorschlag": "string"
         }}
       ],
@@ -101,6 +105,7 @@ def analyze_text_with_llm(law_text, principles):
           "Prinzip": "IT-Expertise wurde einbezogen",
           "Erfüllt": true/false/null,
           "Begründung": "string",
+          "Zitat": "string"/null,
           "Verbesserungsvorschlag": "string"
         }}
       ]
@@ -109,7 +114,8 @@ def analyze_text_with_llm(law_text, principles):
     Für jedes Prinzip:
     - `"Erfüllt"`: Gebe `true` zurück, wenn das Prinzip erfüllt ist, `false`, wenn es nicht erfüllt ist, oder `null`, wenn keine Aussage möglich ist.
     - `"Begründung"`: Erkläre prägnant, warum das Prinzip erfüllt oder nicht erfüllt ist. Zitiere die entsprechende Passage im Gesetz mit Absatz/Satz/Nummer usw.
-    - `"Verbesserungsvorschlag"`: Mach einen kurzen Verbesserungsvorschlag. Wenn das Prinzip erfüllt ist oder kein Aussage möglich gebe `null` zurück."
+    - `"Zitat"`: Zitiere den Worlaut im Gesetzestext, für welchen das Prinzip nicht erfüllt ist. Wenn das Prinzip erfüllt ist oder kein Aussage möglich gebe `null` zurück."
+    - `"Verbesserungsvorschlag"`: Mach einen Verbesserungsvorschlag, welcher das Prinzip erfüllen würde. Wenn das Prinzip erfüllt ist oder kein Aussage möglich gebe `null` zurück."
 
     **Prinzipien:**
     {checks_list}
@@ -147,6 +153,7 @@ def parse_json(result):
                     improvement_suggestions.append({
                         "category": category,
                         "principle": item["Prinzip"],
+                        "zitat": item["Zitat"],
                         "suggestion": item["Verbesserungsvorschlag"]
                     })
 
@@ -155,6 +162,7 @@ def parse_json(result):
         for suggestion in improvement_suggestions:
             print(f"\nCategory: {suggestion['category']}")
             print(f"Principle: {suggestion['principle']}")
+            print(f"Zitat: {suggestion['zitat']}")
             print(f"Suggestion: {suggestion['suggestion']}")
         """
             
@@ -186,7 +194,7 @@ def generate_amended_law(law_text, improvement_suggestions):
     for suggestion in improvement_suggestions:
         formatted_suggestions.append(
             #TBD: avoid redudancies when prompting; maybe pass along corresponding categories and principles?
-            f"{suggestion['suggestion']}"
+            f"{suggestion['zitat']} - {suggestion['suggestion']}"
         )
     
     suggestions_text = "\n".join(formatted_suggestions)
