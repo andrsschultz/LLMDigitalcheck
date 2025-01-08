@@ -230,41 +230,24 @@ def generate_amended_law(law_text, improvement_suggestions):
 
 
 if __name__ == "__main__":
-    # Replace this with your actual law text
-    law_text = """
-        Erbschaftsteuer- und Schenkungsteuergesetz (ErbStG)
-        § 30 Anzeige des Erwerbs
+    print("Enter the law text (type 'END' on a new line and press enter to finish):")
+    # Initialize an empty list to collect lines of input
+    law_text_lines = []
 
-        (1) Jeder der Erbschaftsteuer unterliegende Erwerb (§ 1) ist vom Erwerber, bei einer Zweckzuwendung vom Beschwerten binnen einer Frist von drei Monaten nach erlangter Kenntnis von dem Anfall oder von dem Eintritt der Verpflichtung dem für die Verwaltung der Erbschaftsteuer zuständigen Finanzamt schriftlich anzuzeigen.
-        (2) Erfolgt der steuerpflichtige Erwerb durch ein Rechtsgeschäft unter Lebenden, ist zur Anzeige auch derjenige verpflichtet, aus dessen Vermögen der Erwerb stammt.
-        (3) Einer Anzeige bedarf es nicht, wenn der Erwerb auf einer von einem deutschen Gericht, einem deutschen Notar oder einem deutschen Konsul eröffneten Verfügung von Todes wegen beruht und sich aus der Verfügung das Verhältnis des Erwerbers zum Erblasser unzweifelhaft ergibt; das gilt nicht, wenn zum Erwerb Grundbesitz, Betriebsvermögen, Anteile an Kapitalgesellschaften, die nicht der Anzeigepflicht nach § 33 unterliegen, oder Auslandsvermögen gehört. Einer Anzeige bedarf es auch nicht, wenn eine Schenkung unter Lebenden oder eine Zweckzuwendung gerichtlich oder notariell beurkundet ist.
-        (4) Die Anzeige soll folgende Angaben enthalten:
-        1.
-        Vorname und Familienname, Identifikationsnummer (§ 139b der Abgabenordnung), Beruf, Wohnung des Erblassers oder Schenkers und des Erwerbers;
-        2.
-        Todestag und Sterbeort des Erblassers oder Zeitpunkt der Ausführung der Schenkung;
-        3.
-        Gegenstand und Wert des Erwerbs;
-        4.
-        Rechtsgrund des Erwerbs wie gesetzliche Erbfolge, Vermächtnis, Ausstattung;
-        5.
-        persönliches Verhältnis des Erwerbers zum Erblasser oder zum Schenker wie Verwandtschaft, Schwägerschaft, Dienstverhältnis;
-        6.
-        frühere Zuwendungen des Erblassers oder Schenkers an den Erwerber nach Art, Wert und Zeitpunkt der einzelnen Zuwendung.
-        (5) In den Fällen des § 1 Absatz 1 Nummer 4 ist von der Stiftung oder dem Verein binnen einer Frist von drei Monaten nach dem Zeitpunkt des ersten Übergangs von Vermögen auf die Stiftung oder auf den Verein der Vermögensübergang dem nach § 35 Absatz 4 zuständigen Finanzamt schriftlich anzuzeigen. Die Anzeige soll folgende Angaben enthalten:
-        1.
-        Name, Ort der Geschäftsleitung und des Sitzes der Stiftung oder des Vereins,
-        2.
-        Name und Anschrift des gesetzlichen Vertreters der Stiftung oder des Vereins,
-        3.
-        Zweck der Stiftung oder des Vereins,
-        4.
-        Zeitpunkt des ersten Vermögensübergangs auf die Stiftung oder den Verein,
-        5.
-        Wert und Zusammensetzung des Vermögens.
-    """
-    
-    #STEP 1, see above
+    # Collect input until the user types 'END'
+    while True:
+        line = input()
+        if line.strip().upper() == "END":  # End the input if the user types 'END'
+            break
+        law_text_lines.append(line)
+
+    # Join all lines into a single string
+    law_text = "\n".join(law_text_lines)
+
+    print("Law text entered:")
+    print(law_text)
+
+    # The rest of the script follows as before
     print("Analyzing law started ...")
     result = analyze_text_with_llm(law_text, principles)
     if result:
