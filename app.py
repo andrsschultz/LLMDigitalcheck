@@ -1,4 +1,5 @@
 import os
+import json
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -16,7 +17,7 @@ openai = OpenAI(
     base_url="https://api.deepinfra.com/v1/openai",  # DeepInfra endpoint (adjust if needed)
 )
 
-# Define Digital Principles
+# Define Digitalcheck principles
 principles = {
     "Digitale Kommunikation": [
         "technologieoffen",
@@ -131,74 +132,40 @@ def analyze_text_with_llm(law_text, principles):
     reply = response.choices[0].message.content.strip()
     return reply
 
-if __name__ == "__main__":
-    # Replace this with your actual law text
-    law_text = """
-    Erbschaftsteuer- und Schenkungsteuergesetz (ErbStG)
-§ 30 Anzeige des Erwerbs
-
-(1) Jeder der Erbschaftsteuer unterliegende Erwerb (§ 1) ist vom Erwerber, bei einer Zweckzuwendung vom Beschwerten binnen einer Frist von drei Monaten nach erlangter Kenntnis von dem Anfall oder von dem Eintritt der Verpflichtung dem für die Verwaltung der Erbschaftsteuer zuständigen Finanzamt schriftlich anzuzeigen.
-(2) Erfolgt der steuerpflichtige Erwerb durch ein Rechtsgeschäft unter Lebenden, ist zur Anzeige auch derjenige verpflichtet, aus dessen Vermögen der Erwerb stammt.
-(3) Einer Anzeige bedarf es nicht, wenn der Erwerb auf einer von einem deutschen Gericht, einem deutschen Notar oder einem deutschen Konsul eröffneten Verfügung von Todes wegen beruht und sich aus der Verfügung das Verhältnis des Erwerbers zum Erblasser unzweifelhaft ergibt; das gilt nicht, wenn zum Erwerb Grundbesitz, Betriebsvermögen, Anteile an Kapitalgesellschaften, die nicht der Anzeigepflicht nach § 33 unterliegen, oder Auslandsvermögen gehört. Einer Anzeige bedarf es auch nicht, wenn eine Schenkung unter Lebenden oder eine Zweckzuwendung gerichtlich oder notariell beurkundet ist.
-(4) Die Anzeige soll folgende Angaben enthalten:
-1.
-Vorname und Familienname, Identifikationsnummer (§ 139b der Abgabenordnung), Beruf, Wohnung des Erblassers oder Schenkers und des Erwerbers;
-2.
-Todestag und Sterbeort des Erblassers oder Zeitpunkt der Ausführung der Schenkung;
-3.
-Gegenstand und Wert des Erwerbs;
-4.
-Rechtsgrund des Erwerbs wie gesetzliche Erbfolge, Vermächtnis, Ausstattung;
-5.
-persönliches Verhältnis des Erwerbers zum Erblasser oder zum Schenker wie Verwandtschaft, Schwägerschaft, Dienstverhältnis;
-6.
-frühere Zuwendungen des Erblassers oder Schenkers an den Erwerber nach Art, Wert und Zeitpunkt der einzelnen Zuwendung.
-(5) In den Fällen des § 1 Absatz 1 Nummer 4 ist von der Stiftung oder dem Verein binnen einer Frist von drei Monaten nach dem Zeitpunkt des ersten Übergangs von Vermögen auf die Stiftung oder auf den Verein der Vermögensübergang dem nach § 35 Absatz 4 zuständigen Finanzamt schriftlich anzuzeigen. Die Anzeige soll folgende Angaben enthalten:
-1.
-Name, Ort der Geschäftsleitung und des Sitzes der Stiftung oder des Vereins,
-2.
-Name und Anschrift des gesetzlichen Vertreters der Stiftung oder des Vereins,
-3.
-Zweck der Stiftung oder des Vereins,
-4.
-Zeitpunkt des ersten Vermögensübergangs auf die Stiftung oder den Verein,
-5.
-Wert und Zusammensetzung des Vermögens.
-    """
-    
-result = analyze_text_with_llm(law_text, principles)
-print(result)
-
 # STEP 2 PARSING JSON
-import json
+def parse_json(result):
+    try:
+        # Parse the JSON response
+        result_json = json.loads(result)
+        
+        # Extract improvement suggestions
+        improvement_suggestions = []
+        
+        for category, items in result_json.items():
+            for item in items:
+                if item.get("Verbesserungsvorschlag") is not None and item["Verbesserungsvorschlag"] != "null":
+                    improvement_suggestions.append({
+                        "category": category,
+                        "principle": item["Prinzip"],
+                        "suggestion": item["Verbesserungsvorschlag"]
+                    })
 
-try:
-    # Parse the JSON response
-    result_json = json.loads(result)
-    
-    # Extract improvement suggestions
-    improvement_suggestions = []
-    
-    for category, items in result_json.items():
-        for item in items:
-            if item.get("Verbesserungsvorschlag") is not None and item["Verbesserungsvorschlag"] != "null":
-                improvement_suggestions.append({
-                    "category": category,
-                    "principle": item["Prinzip"],
-                    "suggestion": item["Verbesserungsvorschlag"]
-                })
+        """
+        print("\nImprovement Suggestions:")
+        for suggestion in improvement_suggestions:
+            print(f"\nCategory: {suggestion['category']}")
+            print(f"Principle: {suggestion['principle']}")
+            print(f"Suggestion: {suggestion['suggestion']}")
+        """
+            
+        return improvement_suggestions
 
-    # Output the result
-    print("\nImprovement Suggestions:")
-    for suggestion in improvement_suggestions:
-        print(f"\nCategory: {suggestion['category']}")
-        print(f"Principle: {suggestion['principle']}")
-        print(f"Suggestion: {suggestion['suggestion']}")
-
-except json.JSONDecodeError as e:
-    print(f"Error parsing JSON response: {e}")
-except Exception as e:
-    print(f"Error processing results: {e}")
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON response: {e}")
+        return None
+    except Exception as e:
+        print(f"Error processing results: {e}")
+        return None
 
 
 # STEP 3 AMENDING LAW
@@ -218,11 +185,13 @@ def generate_amended_law(law_text, improvement_suggestions):
     formatted_suggestions = []
     for suggestion in improvement_suggestions:
         formatted_suggestions.append(
-            f"- Kategorie '{suggestion['category']}' - {suggestion['principle']}:\n  {suggestion['suggestion']}"
+            #TBD: avoid redudancies when prompting; maybe pass along corresponding categories and principles?
+            f"{suggestion['suggestion']}"
         )
     
     suggestions_text = "\n".join(formatted_suggestions)
     
+    #TBD: Improve prompt structure
     prompt = f"""
     Als erfahrener Rechtsexperte, überarbeite bitte den folgenden Gesetzestext unter Berücksichtigung der Verbesserungsvorschläge für die digitale Transformation. 
     Beachte dabei:
@@ -256,13 +225,60 @@ def generate_amended_law(law_text, improvement_suggestions):
         
     except Exception as e:
         return f"Error generating amended law: {e}"
+    
+
+
 
 if __name__ == "__main__":
-    # Previous code remains the same until improvement suggestions are generated
+    # Replace this with your actual law text
+    law_text = """
+        Erbschaftsteuer- und Schenkungsteuergesetz (ErbStG)
+        § 30 Anzeige des Erwerbs
+
+        (1) Jeder der Erbschaftsteuer unterliegende Erwerb (§ 1) ist vom Erwerber, bei einer Zweckzuwendung vom Beschwerten binnen einer Frist von drei Monaten nach erlangter Kenntnis von dem Anfall oder von dem Eintritt der Verpflichtung dem für die Verwaltung der Erbschaftsteuer zuständigen Finanzamt schriftlich anzuzeigen.
+        (2) Erfolgt der steuerpflichtige Erwerb durch ein Rechtsgeschäft unter Lebenden, ist zur Anzeige auch derjenige verpflichtet, aus dessen Vermögen der Erwerb stammt.
+        (3) Einer Anzeige bedarf es nicht, wenn der Erwerb auf einer von einem deutschen Gericht, einem deutschen Notar oder einem deutschen Konsul eröffneten Verfügung von Todes wegen beruht und sich aus der Verfügung das Verhältnis des Erwerbers zum Erblasser unzweifelhaft ergibt; das gilt nicht, wenn zum Erwerb Grundbesitz, Betriebsvermögen, Anteile an Kapitalgesellschaften, die nicht der Anzeigepflicht nach § 33 unterliegen, oder Auslandsvermögen gehört. Einer Anzeige bedarf es auch nicht, wenn eine Schenkung unter Lebenden oder eine Zweckzuwendung gerichtlich oder notariell beurkundet ist.
+        (4) Die Anzeige soll folgende Angaben enthalten:
+        1.
+        Vorname und Familienname, Identifikationsnummer (§ 139b der Abgabenordnung), Beruf, Wohnung des Erblassers oder Schenkers und des Erwerbers;
+        2.
+        Todestag und Sterbeort des Erblassers oder Zeitpunkt der Ausführung der Schenkung;
+        3.
+        Gegenstand und Wert des Erwerbs;
+        4.
+        Rechtsgrund des Erwerbs wie gesetzliche Erbfolge, Vermächtnis, Ausstattung;
+        5.
+        persönliches Verhältnis des Erwerbers zum Erblasser oder zum Schenker wie Verwandtschaft, Schwägerschaft, Dienstverhältnis;
+        6.
+        frühere Zuwendungen des Erblassers oder Schenkers an den Erwerber nach Art, Wert und Zeitpunkt der einzelnen Zuwendung.
+        (5) In den Fällen des § 1 Absatz 1 Nummer 4 ist von der Stiftung oder dem Verein binnen einer Frist von drei Monaten nach dem Zeitpunkt des ersten Übergangs von Vermögen auf die Stiftung oder auf den Verein der Vermögensübergang dem nach § 35 Absatz 4 zuständigen Finanzamt schriftlich anzuzeigen. Die Anzeige soll folgende Angaben enthalten:
+        1.
+        Name, Ort der Geschäftsleitung und des Sitzes der Stiftung oder des Vereins,
+        2.
+        Name und Anschrift des gesetzlichen Vertreters der Stiftung oder des Vereins,
+        3.
+        Zweck der Stiftung oder des Vereins,
+        4.
+        Zeitpunkt des ersten Vermögensübergangs auf die Stiftung oder den Verein,
+        5.
+        Wert und Zusammensetzung des Vermögens.
+    """
     
-    # After generating improvement suggestions, create amended law text
-    if improvement_suggestions:
-        print("\nGenerating amended law text based on suggestions...")
-        amended_law = generate_amended_law(law_text, improvement_suggestions)
-        print("\nAmended Law Text:")
-        print(amended_law)
+    #STEP 1, see above
+    print("Analyzing law started ...")
+    result = analyze_text_with_llm(law_text, principles)
+    if result:
+        print("Analyzing law completed.")
+        print(result)
+         # STEP 2, see above
+        print("Parsing returned JSON started ...")
+        improvement_suggestions = parse_json(result)
+        print("Parsing returned JSON completed")
+        print(improvement_suggestions)
+        if improvement_suggestions:
+            print("Amending law started ...")
+             # STEP 3, see above
+            amended_law = generate_amended_law(law_text, improvement_suggestions)
+            if amended_law: 
+                print("Amending law completed. Amended law text:")
+                print(amended_law)
