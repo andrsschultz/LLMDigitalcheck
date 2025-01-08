@@ -1,6 +1,2 @@
-spacy==3.6.0
 openai
-gradio
-transformers==4.35.0
-torch==2.0.1
 python-dotenv==1.0.0
