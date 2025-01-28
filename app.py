@@ -6,16 +6,31 @@ from openai import OpenAI
 # Load environment variables from .env file
 load_dotenv()
 
-# Retrieve the OPENAI_API_KEY
+# Retrieve the OPENAI_API_KEY and DEEPINFRA_API_KEY
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     raise ValueError("OPENAI_API_KEY environment variable is not set.")
+deepinfra_api_key = os.getenv("DEEPINFRA_API_KEY")
+if not deepinfra_api_key:
+    raise ValueError("DEEPINFRA_API_KEY environment variable is not set.")
 
-# Initialize OpenAI API
-openai = OpenAI(
+# Initialize OpenAI and DeepInfra API
+openaiClient = OpenAI(
     api_key=openai_api_key,  # Use environment variable for API key
-    base_url="https://api.deepinfra.com/v1/openai",  # DeepInfra endpoint (adjust if needed)
 )
+deepinfraClient = OpenAI(
+    api_key=deepinfra_api_key,  # Use environment variable for API key
+    base_url="https://api.deepinfra.com/v1/openai",  # DeepInfra endpoint 
+)
+
+# Available models configuration
+availableModels = {
+    "openai": ["chatgpt-4o-latest", "gpt-4o-mini", "o1-mini", "o1-preview", "o1"],
+    "deepinfra": ["meta-llama/Llama-3.3-70B-Instruct", "meta-llama/Meta-Llama-3.1-8B-Instruct", "deepseek-ai/DeepSeek-R1", "deepseek-ai/DeepSeek-R1-Distill-Llama-70B", "deepseek-ai/DeepSeek-V3"]
+}
+
+# Selected model for upcoming analysis
+selectedModel =  "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"  # Can be changed to any model from availableModels
 
 # Define Digitalcheck principles, cf. https://www.digitale-verwaltung.de/SharedDocs/downloads/Webs/DV/DE/digitalcheck-fuenf-prinzipien.pdf?__blob=publicationFile&v=5
 # TBD: Improvements structure, information
@@ -125,8 +140,16 @@ def analyze_text_with_llm(law_text, principles):
     )
 
     try:
-        response = openai.chat.completions.create(
-            model="meta-llama/Llama-3.3-70B-Instruct",  # Adjust model if needed
+        # Select the appropriate client and model based on selectedModel
+        if selectedModel in availableModels["openai"]:
+            client = openaiClient
+        elif selectedModel in availableModels["deepinfra"]:
+            client = deepinfraClient
+        else:
+            raise ValueError(f"Selected model {selectedModel} not found in available models")
+
+        response = client.chat.completions.create(
+            model=selectedModel,
             messages=[{"role": "user", "content": prompt}],
             response_format={ "type": "json_object" }
         )
@@ -138,6 +161,7 @@ def analyze_text_with_llm(law_text, principles):
         return f"Error occurred: {e}"
 
     reply = response.choices[0].message.content.strip()
+    print(reply)
     return reply
 
 # STEP 2 PARSING JSON
@@ -213,8 +237,16 @@ def generate_amended_law(law_text, improvement_suggestions):
     print(prompt)
     
     try:
-        response = openai.chat.completions.create(
-            model="meta-llama/Llama-3.3-70B-Instruct",
+        # Select the appropriate client and model based on selectedModel
+        if selectedModel in availableModels["openai"]:
+            client = openaiClient
+        elif selectedModel in availableModels["deepinfra"]:
+            client = deepinfraClient
+        else:
+            raise ValueError(f"Selected model {selectedModel} not found in available models")
+
+        response = client.chat.completions.create(
+            model=selectedModel,
             messages=[{"role": "user", "content": prompt}]
         )
         
