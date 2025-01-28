@@ -3,6 +3,8 @@ import json
 from dotenv import load_dotenv
 from openai import OpenAI
 
+import helper
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -30,112 +32,77 @@ availableModels = {
 }
 
 # Selected model for upcoming analysis
-selectedModel =  "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"  # Can be changed to any model from availableModels
-
-# Define Digitalcheck principles, cf. https://www.digitale-verwaltung.de/SharedDocs/downloads/Webs/DV/DE/digitalcheck-fuenf-prinzipien.pdf?__blob=publicationFile&v=5
-# TBD: Improvements structure, information
-principles = {
-    "Digitale Kommunikation": [
-        "Der Inhalt des Regelungsvorhabens ist technologieoffen.",
-        "Medienbrüche sind vermieden.",
-        "Analoge Schriftformerfordernisse und Nachweispflichten sind vermieden.",
-        "Barrierefreiheit und deren Anforderungen sind ermöglicht."
-    ],
-    "Wiederverwendung von Daten & Standards": [
-        "Bestehende Datenerfassungs- und Austauschverfahren, Register und weitere Quellen werden berücksichtigt und nicht erneut erfasst.",
-        "Es besteht die Voraussetzung für die Verwendung bestehender relevanter Daten, Standards, Richtlinien und Komponenten.",
-        "Barrierefreiheit und Anforderungen für Barrierefreiheit sind ermöglicht."
-    ],
-    "Datenschutz & Informationssicherheit": [
-        "Der Erfüllungsaufwand berücksichtigt die für die Erfüllung der Vorgaben der Informationssicherheit notwendigen finanziellen und personellen Ressourcen.",
-        "Es wurden Datenschutz-Expertise und IT-Sicherheitsexpertise konsultiert oder berücksichtigt",
-        "(Gesetzliche) Anforderungen des Datenschutzes, insbesondere der Datensparsamkeit, und der Informationssicherheit sind berücksichtigt"
-    ],
-    "Klare Regelungen für eine digitale Ausführung": [
-        "Die Regelungen wurden mit am Vollzug beteiligten Verwaltungen, Unternehmen, Organisationen oder Bürgerinnen und Bürgern auf Verständlichkeit getestet.",
-        "Bei verfahrenstechnischen Anforderungen kann das Regelungsvorhaben in Aufgaben bzw. chronologische Schritte übersetzt werden.",
-        "Klare Entscheidungsstrukturen liegen vor durch eindeutige Kriterien sowie kohärente und logische Systematik. Ausnahmen sind klar gekennzeichnet.",
-        "Rechtsbegriffe sind harmonisiert. Alle Begriffe sind klar und eindeutig. Auslegungen verhindern eine einheitliche Umsetzung."
-    ],
-    "Automatisierung ermöglichen": [
-        "IT-Expertise wurde bei der Erstellung einbezogen.",
-        "Das Regelungsvorhaben schafft rechtliche Voraussetzungen für automatisierte und/oder antragslose Verfahren.",
-        "Klare Entscheidungsstrukturen liegen vor; durch eindeutige Kriterien sowie kohärente und logische Systematik.",
-        "Rechtsbegriffe sind harmonisiert. Alle Begriffe sind klar und eindeutig. Auslegungen verhindern die vollständige Automatisierung von Umsetzungsprozessen."
-    ]
-}
+selectedModel =  "meta-llama/Meta-Llama-3.1-8B-Instruct"  # Can be changed to any model listed in availableModels
 
 # STEP 1 ANALYZING LAW
 
-def analyze_text_with_llm(law_text, principles):
-    all_checks = []
-    for principle_group, checks in principles.items():
-        all_checks.append(f"**{principle_group}:**")
-        all_checks.extend([f"- {check}" for check in checks])
-    checks_list = "\n".join(all_checks)
+def analyze_text_with_llm(law_text):
 
     prompt = (
     f"""
-    Das folgende Dokument ist ein Gesetz: {law_text}\n\n
-    "Der Digitalcheck unterstützt bei der Erarbeitung von digitaltauglichen Regelungsvorhaben.
+    Analysiere das am Ende gegebene Gesetz darauf, ob es folgende Prinzipien des Digitalchecks einhält: {helper.digital_check_prinzipien}\n\n
+    
     Beurteile, ob das Gesetz die Prinzipien unten erfüllt. Gib die Antwort zwingend entsprechend der folgenden JSON-Datenstruktur zurück:
 
-    {{
-      "Digitale Kommunikation": [
+      "prinzipien": [
         {{
-          "Prinzip": "Der Inhalt des Regelungsvorhabens ist technologieoffen.",
-          "Erfüllt": true/false/null,
-          "Begründung": "string",
-          "Zitat": "string"/null,
-          "Änderungsvorschlag": "string"
-        }}
-      ],
-      "Wiederverwendung von Daten & Standards": [
+          "prinzip": "Digitale Kommunikation sicherstellen",
+          "verstoss": true,
+          "begruendung": "Die Vorschrift verlangt eine schriftliche Anzeige, ohne eine digitale Alternative vorzusehen. Dies führt zu Medienbrüchen und verhindert eine vollständig digitale Kommunikation.",
+          "zitierte_passagen": [
+            "§ 30 (1) [...] dem für die Verwaltung der Erbschaftsteuer zuständigen Finanzamt schriftlich anzuzeigen.",
+            "§ 30 (5) [...] der Vermögensübergang dem nach § 35 Absatz 4 zuständigen Finanzamt schriftlich anzuzeigen."
+          ],
+          "verbesserungsvorschlag": "Eine digitale Einreichungsmöglichkeit über ein Online-Portal oder eine API für Steuerberater und Notare schaffen. Die Schriftform könnte durch eine digitale Signatur oder eine Identifikationsnummer ersetzt werden."
+        }},
         {{
-          "Bestehende Datenerfassungs- und Austauschverfahren, Register und weitere Quellen werden berücksichtigt und nicht erneut erfasst.",
-          "Erfüllt": true/false/null,
-          "Begründung": "string",
-          "Zitat": "string"/null,
-          "Änderungsvorschlag": "string"
-        }}
-      ],
-      "Datenschutz & Informationssicherheit": [
+          "prinzip": "Wiederverwendung von Daten & Standards ermöglichen",
+          "verstoss": true,
+          "begruendung": "Bestehende Register (z. B. Grundbuch, Melderegister, Steuer-ID) werden nicht genutzt. Betroffene müssen Informationen erneut eingeben, obwohl sie bereits in anderen Behörden vorliegen.",
+          "zitierte_passagen": [
+            "§ 30 (4) Die Anzeige soll folgende Angaben enthalten: 1. Vorname und Familienname, Identifikationsnummer (§ 139b der Abgabenordnung), Beruf, Wohnung des Erblassers oder Schenkers und des Erwerbers;",
+            "§ 30 (4) 3. Gegenstand und Wert des Erwerbs;"
+          ],
+          "verbesserungsvorschlag": "Automatische Datenübernahme aus vorhandenen Registern ermöglichen (Once-Only-Prinzip). Das Finanzamt könnte auf Steuer-ID und andere Register zugreifen, um manuelle Dateneingaben zu reduzieren."
+        }},
         {{
-          "Prinzip": "(Gesetzliche) Anforderungen des Datenschutzes, insbesondere der Datensparsamkeit, und der Informationssicherheit sind berücksichtigt",
-          "Erfüllt": true/false/null,
-          "Begründung": "string",
-          "Zitat": "string"/null,
-          "Änderungsvorschlag": "string"
-        }}
-      ],
-      "Klare Regelungen für eine digitale Ausführung": [
+          "prinzip": "Datenschutz & Informationssicherheit gewährleisten",
+          "verstoss": true,
+          "begruendung": "Es gibt keine expliziten Vorgaben zur sicheren Verarbeitung und Speicherung der personenbezogenen Daten. Datenschutz und IT-Sicherheit sind nicht berücksichtigt.",
+          "zitierte_passagen": [
+            "§ 30 (4) Die Anzeige soll folgende Angaben enthalten: 1. Vorname und Familienname, Identifikationsnummer (§ 139b der Abgabenordnung), Beruf, Wohnung des Erblassers oder Schenkers und des Erwerbers;"
+          ],
+          "verbesserungsvorschlag": "Datensparsamkeit durch Minimaldatenerhebung sicherstellen. Datenschutz- und IT-Sicherheitsexperten sollten in die Gesetzgebung einbezogen werden. Eine verschlüsselte digitale Übertragung der Daten sollte ermöglicht werden."
+        }},
         {{
-          "Klare Entscheidungsstrukturen liegen vor durch eindeutige Kriterien sowie kohärente und logische Systematik. Ausnahmen sind klar gekennzeichnet.",
-          "Erfüllt": true/false/null,
-          "Begründung": "string",
-          "Zitat": "string"/null,
-          "Änderungsvorschlag": "string"
-        }}
-      ],
-      "Automatisierung": [
+          "prinzip": "Klare Regelungen für eine digitale Ausführung finden",
+          "verstoss": true,
+          "begruendung": "Die Regelung enthält keine spezifischen Anforderungen für eine digitale Prozessgestaltung. Es fehlen klare Schritte für eine digitale Anzeige und Harmonisierung der Begriffe.",
+          "zitierte_passagen": [
+            "§ 30 (4) Die Anzeige soll folgende Angaben enthalten: [...]"
+          ],
+          "verbesserungsvorschlag": "Klare Verfahrensschritte für ein digitales Meldesystem definieren, z. B. durch eine Online-Plattform mit strukturierten Eingabefeldern und Validierungsmöglichkeiten."
+        }},
         {{
-          "Das Regelungsvorhaben schafft rechtliche Voraussetzungen für automatisierte und/oder antragslose Verfahren.",
-          "Erfüllt": true/false/null,
-          "Begründung": "string",
-          "Zitat": "string"/null,
-          "Änderungsvorschlag": "string"
+          "prinzip": "Automatisierung ermöglichen",
+          "verstoss": true,
+          "begruendung": "Die Vorschrift verlangt eine manuelle Anzeige und ermöglicht keine automatisierten oder antragslosen Verfahren. Es gibt keine rechtlichen Voraussetzungen für eine automatisierte Verarbeitung der Daten.",
+          "zitierte_passagen": [
+            "§ 30 (1) Jeder der Erbschaftsteuer unterliegende Erwerb [...] ist schriftlich anzuzeigen.",
+            "§ 30 (5) [...] schriftlich anzuzeigen."
+          ],
+          "verbesserungsvorschlag": "Rechtliche Grundlagen für eine automatisierte Bearbeitung schaffen, z. B. durch standardisierte digitale Schnittstellen, automatische Registerabfragen und vorbefüllte Online-Formulare."
         }}
       ]
-    }}
+    
 
     Für jedes Prinzip:
     - `"Erfüllt"`: Gebe `true` zurück, wenn das Prinzip erfüllt ist, `false`, wenn es nicht erfüllt ist, oder `null`, wenn keine Aussage möglich ist.
-    - `"Begründung"`: Erkläre prägnant, warum das Prinzip erfüllt oder nicht erfüllt ist. Zitiere die entsprechende Passage im Gesetz mit Absatz/Satz/Nummer usw.
-    - `"Zitat"`: Zitiere den entsprechenden Worlaut im Gesetzestext, wenn das Prinzip nicht erfüllt ist. Wenn das Prinzip erfüllt ist oder kein Aussage möglich gebe `null` zurück."
-    - `"Änderungsvorschlag"`: Wie würdest du den Gesetzestext ändern um das Prinzip zu berücksichtigen? Wenn das Prinzip erfüllt ist oder kein Aussage möglich gebe `null` zurück."
+    - `"Begründung"`: Erkläre prägnant, warum das Prinzip erfüllt oder nicht erfüllt ist. Zitiere die entsprechende Passagen im Gesetz mit Absatz/Satz/Nummer usw.
+    - `"Zitat"`: Zitiere die entsprechenden Passagen des Gesetzestextes im Wortlaut, für die das Prinzip nicht erfüllt ist. Wenn das Prinzip erfüllt ist oder keine Aussage möglich ist, gebe `null` zurück.
+    - `"Änderungsvorschlag"`: Wie würdest du den Gesetzestext ändern, um das Prinzip zu berücksichtigen? Wenn das Prinzip erfüllt ist oder keine Aussage möglich ist, gebe `null` zurück.
 
-    **Prinzipien:**
-    {checks_list}
+    Das Gesetz lautet: {law_text}
     """
     )
 
@@ -151,7 +118,8 @@ def analyze_text_with_llm(law_text, principles):
         response = client.chat.completions.create(
             model=selectedModel,
             messages=[{"role": "user", "content": prompt}],
-            response_format={ "type": "json_object" }
+            #Comment line below if selected model does not allow for response formatting
+            #response_format={ "type": "json_object" }
         )
         print("\nToken Usage:")
         print(f"Input tokens: {response.usage.prompt_tokens}")
@@ -164,78 +132,17 @@ def analyze_text_with_llm(law_text, principles):
     print(reply)
     return reply
 
-# STEP 2 PARSING JSON
-def parse_json(result):
-    try:
-        # Parse the JSON response
-        result_json = json.loads(result)
-        
-        # Extract improvement suggestions only for items where Erfüllt is false
-        improvement_suggestions = []
-        
-        for category, items in result_json.items():
-            for item in items:
-                if item.get("Erfüllt") == False and item.get("Änderungsvorschlag") is not None and item["Änderungsvorschlag"] != "null":
-                    improvement_suggestions.append({
-                        "category": category,
-                        "principle": item["Prinzip"],
-                        "zitat": item["Zitat"],
-                        "suggestion": item["Änderungsvorschlag"]
-                    })
+# STEP 2 AMENDING LAW
 
-        print("\nImprovement Suggestions for unfulfilled principles:")
-        for suggestion in improvement_suggestions:
-            print(f"\nCategory: {suggestion['category']}")
-            print(f"Principle: {suggestion['principle']}")
-            print(f"Zitat: {suggestion['zitat']}")
-            print(f"Suggestion: {suggestion['suggestion']}")
-            
-        return improvement_suggestions
-
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON response: {e}")
-        return None
-    except Exception as e:
-        print(f"Error processing results: {e}")
-        return None
-
-
-# STEP 3 AMENDING LAW
-
-def generate_amended_law(law_text, improvement_suggestions):
-    """
-    Generate an amended version of the law text based on improvement suggestions.
-    
-    Args:
-        law_text (str): The original law text
-        improvement_suggestions (list): List of dictionaries containing improvement suggestions
-    
-    Returns:
-        str: The LLM response containing the amended law text
-    """
-    # Format suggestions for the prompt
-    formatted_suggestions = []
-    for suggestion in improvement_suggestions:
-        formatted_suggestions.append(
-            f"'{suggestion['suggestion']}"
-        )
-    
-    suggestions_text = "\n".join(formatted_suggestions)
+def generate_amended_law(law_text, input_response):
     
     prompt = f"""
-    Als erfahrener Rechtsexperte, überarbeite bitte den folgenden Gesetzestext unter Berücksichtigung der Änderungsvorschläge für die digitale Transformation. 
+    Als erfahrener Rechtsexperte, überarbeite bitte den am Ende gegebenen Gesetzestext unter Berücksichtigung der im folgenden JSON enthaltenen Änderungsvorschlägen: {input_response}\n\n
     
-    Ursprünglicher Gesetzestext:
-    {law_text}
-
-    Zu berücksichtigende Änderungsvorschläge:
-    {suggestions_text}
+    Das Gesetz lautet: {law_text}
 
     Gib den überarbeiteten Gesetzestext in seiner Gesamtheit zurück. Markiere geänderte oder neue Passagen durch [[ ]] Klammern.
-    """
-
-    print(prompt)
-    
+    """    
     try:
         # Select the appropriate client and model based on selectedModel
         if selectedModel in availableModels["openai"]:
@@ -275,24 +182,21 @@ if __name__ == "__main__":
     # Join all lines into a single string
     law_text = "\n".join(law_text_lines)
 
-    print("Law text entered:")
-    print(law_text)
+    if not law_text: 
+        print("No law text entered. Using sample law (§30 ErbStG) for analysis.")
+        law_text = helper.sample_law
+    else: 
+        print("Law text entered:")
+        print(law_text)
 
     # The rest of the script follows as before
     print("Analyzing law started ...")
-    result = analyze_text_with_llm(law_text, principles)
+    result = analyze_text_with_llm(law_text)
     if result:
         print("Analyzing law completed.")
         print(result)
-         # STEP 2, see above
-        print("Parsing returned JSON started ...")
-        improvement_suggestions = parse_json(result)
-        print("Parsing returned JSON completed")
-        print(improvement_suggestions)
-        if improvement_suggestions:
-            print("Amending law started ...")
-             # STEP 3, see above
-            amended_law = generate_amended_law(law_text, improvement_suggestions)
-            if amended_law: 
-                print("Amending law completed. Amended law text:")
-                print(amended_law)
+        # STEP 2, see above
+        amended_law = generate_amended_law(law_text, result)
+        if amended_law: 
+            print("Amending law completed. Amended law text:")
+            print(amended_law)
