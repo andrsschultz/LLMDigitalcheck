@@ -2,6 +2,7 @@ import os
 import json
 from dotenv import load_dotenv
 from openai import OpenAI
+import gradio as gr
 
 import helper
 
@@ -168,36 +169,74 @@ def generate_amended_law(law_text, input_response):
     except Exception as e:
         return f"Error generating amended law: {e}"
 
-if __name__ == "__main__":
-    print("Enter the law text (type 'END' on a new line and press enter to finish):")
-    # Initialize an empty list to collect lines of input
-    law_text_lines = []
-
-    # Collect input until the user types 'END'
-    while True:
-        line = input()
-        if line.strip().upper() == "END":  # End the input if the user types 'END'
-            break
-        law_text_lines.append(line)
-
-    # Join all lines into a single string
-    law_text = "\n".join(law_text_lines)
-
-    if not law_text: 
-        print("No law text entered. Using sample law (§30 ErbStG) for analysis.")
-        law_text = helper.sample_law
-    else: 
-        print("Law text entered:")
-        print(law_text)
-
-    # The rest of the script follows as before
+def analyze_law(law_text, selected_model):
+    
     print("Analyzing law started ...")
-    result = analyze_text_with_llm(law_text)
+
+    try: 
+
+      result = analyze_text_with_llm(law_text)
+            
+      return result, "*AMENDED LAW*"
+
+    except Exception as e:
+      return f"Error: {str(e)}", "Error in analyze_law: {str(e)}"
+
+
     if result:
-        print("Analyzing law completed. Response:")
-        print(result)
-        # STEP 2, see above
-        amended_law = generate_amended_law(law_text, result)
-        if amended_law: 
-            print("Amending law completed. Amended law text:")
-            print(amended_law)
+        print("Analyzing law completed.")
+        # # STEP 2, see above
+        # amended_law = generate_amended_law(law_text, result)
+        # if amended_law: 
+        #     print("Amending law completed.")
+
+
+
+
+
+#DEPLOY USING GRADIO
+
+# Flatten model list for dropdown
+all_models = []
+for provider, models in availableModels.items():
+    all_models.extend(models)
+
+# Create Gradio interface
+def create_interface():
+    with gr.Blocks(title="Digital Law Check") as interface:
+        gr.Markdown("# Digital Law Check")
+        gr.Markdown("Analyze laws for digital compliance and get improvement suggestions.")
+        
+        with gr.Row():
+            with gr.Column():
+                model_dropdown = gr.Dropdown(
+                    choices=all_models,
+                    value=all_models[0],
+                    label="Select Model"
+                )
+                law_input = gr.Textbox(
+                    lines=10,
+                    label="Input Law Text",
+                    placeholder="Paste the law text here...",
+                    value=helper.sample_law
+                )
+                analyze_button = gr.Button("Analyze Law", variant="primary")
+            
+            with gr.Column():
+                analysis_output = gr.JSON(label="Analysis Result")
+                amended_law_output = gr.Textbox(
+                    lines=10,
+                    label="Amended Law Suggestion"
+                )
+        
+        analyze_button.click(
+            fn=analyze_law,
+            inputs=[law_input, model_dropdown],
+            outputs=[analysis_output, amended_law_output]
+        )
+    
+    return interface
+
+if __name__ == "__main__":
+    interface = create_interface()
+    interface.launch(share=True)
