@@ -34,12 +34,9 @@ availableModels = {
     "deepinfra": ["meta-llama/Llama-3.3-70B-Instruct", "meta-llama/Meta-Llama-3.1-8B-Instruct", "deepseek-ai/DeepSeek-R1", "deepseek-ai/DeepSeek-R1-Distill-Llama-70B", "deepseek-ai/DeepSeek-V3"]
 }
 
-# Select model for analysis
-selectedModel =  "chatgpt-4o-latest"  # Can be changed to any model listed in availableModels
+def analyze_text_with_llm(law_text, selectedModel):
 
-# STEP 1 ANALYZING LAW
-
-def analyze_text_with_llm(law_text):
+    print("Selected model: "+selectedModel)
 
     prompt = (
     f"""
@@ -121,8 +118,8 @@ def analyze_text_with_llm(law_text):
         response = client.chat.completions.create(
             model=selectedModel,
             messages=[{"role": "user", "content": prompt}],
-            #Comment line below if selected model does not allow for response formatting
-            response_format={ "type": "json_object" }
+            # Not all models support response formatting
+            response_format={ "type": "json_object" } if selectedModel in ["chatgpt-4o-latest", "gpt-4o-mini", "meta-llama/Llama-3.3-70B-Instruct", "meta-llama/Meta-Llama-3.1-8B-Instruct", "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"] else None
         )
         print("\nToken Usage:")
         print(f"Input tokens: {response.usage.prompt_tokens}")
@@ -134,50 +131,51 @@ def analyze_text_with_llm(law_text):
     reply = response.choices[0].message.content.strip()
     return reply
 
-# STEP 2 AMENDING LAW
+# # STEP 2 AMENDING LAW
 
-def generate_amended_law(law_text, input_response):
+# def generate_amended_law(law_text, input_response):
     
-    prompt = f"""
-    Als erfahrener Rechtsexperte, überarbeite bitte den am Ende gegebenen Gesetzestext unter Berücksichtigung der im folgenden JSON enthaltenen Änderungsvorschlägen: {input_response}\n\n
+#     prompt = f"""
+#     Als erfahrener Rechtsexperte, überarbeite bitte den am Ende gegebenen Gesetzestext unter Berücksichtigung der im folgenden JSON enthaltenen Änderungsvorschlägen: {input_response}\n\n
     
-    Das Gesetz lautet: {law_text}
+#     Das Gesetz lautet: {law_text}
 
-    Gib den überarbeiteten Gesetzestext in seiner Gesamtheit zurück. Markiere geänderte oder neue Passagen durch [[ ]] Klammern.
-    """    
-    try:
-        # Select the appropriate client and model based on selectedModel
-        if selectedModel in availableModels["openai"]:
-            client = openaiClient
-        elif selectedModel in availableModels["deepinfra"]:
-            client = deepinfraClient
-        else:
-            raise ValueError(f"Selected model {selectedModel} not found in available models")
+#     Gib den überarbeiteten Gesetzestext in seiner Gesamtheit zurück. Markiere geänderte oder neue Passagen durch [[ ]] Klammern.
+#     """    
+#     try:
+#         # Select the appropriate client and model based on selectedModel
+#         if selectedModel in availableModels["openai"]:
+#             client = openaiClient
+#         elif selectedModel in availableModels["deepinfra"]:
+#             client = deepinfraClient
+#         else:
+#             raise ValueError(f"Selected model {selectedModel} not found in available models")
 
-        response = client.chat.completions.create(
-            model=selectedModel,
-            messages=[{"role": "user", "content": prompt}]
-        )
+#         response = client.chat.completions.create(
+#             model=selectedModel,
+#             messages=[{"role": "user", "content": prompt}]
+#         )
         
-        print("\nToken Usage for Law Amendment:")
-        print(f"Input tokens: {response.usage.prompt_tokens}")
-        print(f"Output tokens: {response.usage.completion_tokens}")
-        print(f"Total tokens: {response.usage.total_tokens}")
+#         print("\nToken Usage for Law Amendment:")
+#         print(f"Input tokens: {response.usage.prompt_tokens}")
+#         print(f"Output tokens: {response.usage.completion_tokens}")
+#         print(f"Total tokens: {response.usage.total_tokens}")
         
-        return response.choices[0].message.content.strip()
+#         return response.choices[0].message.content.strip()
         
-    except Exception as e:
-        return f"Error generating amended law: {e}"
+#     except Exception as e:
+#         return f"Error generating amended law: {e}"
 
-def analyze_law(law_text, selected_model):
+def analyze_law(law_text, selectedModel):
     
     print("Analyzing law started ...")
 
+
     try: 
 
-      result = analyze_text_with_llm(law_text)
+      result = analyze_text_with_llm(law_text, selectedModel)
             
-      return result, "*AMENDED LAW*"
+      return result
 
     except Exception as e:
       return f"Error: {str(e)}", "Error in analyze_law: {str(e)}"
@@ -203,9 +201,9 @@ for provider, models in availableModels.items():
 
 # Create Gradio interface
 def create_interface():
-    with gr.Blocks(title="Digital Law Check") as interface:
-        gr.Markdown("# Digital Law Check")
-        gr.Markdown("Analyze laws for digital compliance and get improvement suggestions.")
+    with gr.Blocks(title="Digitalcheck LLM") as interface:
+        gr.Markdown("# Digitalcheck LLM")
+        gr.Markdown("Analyze laws for compliance to Digitalcheck principles.")
         
         with gr.Row():
             with gr.Column():
@@ -223,20 +221,20 @@ def create_interface():
                 analyze_button = gr.Button("Analyze Law", variant="primary")
             
             with gr.Column():
-                analysis_output = gr.JSON(label="Analysis Result")
-                amended_law_output = gr.Textbox(
-                    lines=10,
-                    label="Amended Law Suggestion"
-                )
+                analysis_output = gr.Textbox(label="Analysis Result")
+                # amended_law_output = gr.Textbox(
+                #     lines=10,
+                #     label="Amended Law Suggestion"
+                # )
         
         analyze_button.click(
             fn=analyze_law,
             inputs=[law_input, model_dropdown],
-            outputs=[analysis_output, amended_law_output]
+            outputs=[analysis_output]
         )
     
     return interface
 
 if __name__ == "__main__":
     interface = create_interface()
-    interface.launch(share=True)
+    interface.launch(share=False)
