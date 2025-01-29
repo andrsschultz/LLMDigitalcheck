@@ -2,11 +2,14 @@ import os
 import json
 from dotenv import load_dotenv
 from openai import OpenAI
+import gradio as gr
+
+import helper
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Retrieve the OPENAI_API_KEY and DEEPINFRA_API_KEY
+# Retrieve OPENAI_API_KEY and/or DEEPINFRA_API_KEY
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     raise ValueError("OPENAI_API_KEY environment variable is not set.")
@@ -14,128 +17,92 @@ deepinfra_api_key = os.getenv("DEEPINFRA_API_KEY")
 if not deepinfra_api_key:
     raise ValueError("DEEPINFRA_API_KEY environment variable is not set.")
 
-# Initialize OpenAI and DeepInfra API
+# Initialize OpenAI and DeepInfra API client
 openaiClient = OpenAI(
-    api_key=openai_api_key,  # Use environment variable for API key
+    api_key=openai_api_key,  
 )
 deepinfraClient = OpenAI(
     api_key=deepinfra_api_key,  # Use environment variable for API key
-    base_url="https://api.deepinfra.com/v1/openai",  # DeepInfra endpoint 
+    base_url="https://api.deepinfra.com/v1/openai",
 )
 
 # Available models configuration
+# Note: Some models may output truncated output due to max token limitation
+# Note: Some models may not conform to JSON response format, see below 
 availableModels = {
     "openai": ["chatgpt-4o-latest", "gpt-4o-mini", "o1-mini", "o1-preview", "o1"],
     "deepinfra": ["meta-llama/Llama-3.3-70B-Instruct", "meta-llama/Meta-Llama-3.1-8B-Instruct", "deepseek-ai/DeepSeek-R1", "deepseek-ai/DeepSeek-R1-Distill-Llama-70B", "deepseek-ai/DeepSeek-V3"]
 }
 
-# Selected model for upcoming analysis
-selectedModel =  "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"  # Can be changed to any model from availableModels
+def analyze_text_with_llm(law_text, selectedModel):
 
-# Define Digitalcheck principles, cf. https://www.digitale-verwaltung.de/SharedDocs/downloads/Webs/DV/DE/digitalcheck-fuenf-prinzipien.pdf?__blob=publicationFile&v=5
-# TBD: Improvements structure, information
-principles = {
-    "Digitale Kommunikation": [
-        "Der Inhalt des Regelungsvorhabens ist technologieoffen.",
-        "Medienbrüche sind vermieden.",
-        "Analoge Schriftformerfordernisse und Nachweispflichten sind vermieden.",
-        "Barrierefreiheit und deren Anforderungen sind ermöglicht."
-    ],
-    "Wiederverwendung von Daten & Standards": [
-        "Bestehende Datenerfassungs- und Austauschverfahren, Register und weitere Quellen werden berücksichtigt und nicht erneut erfasst.",
-        "Es besteht die Voraussetzung für die Verwendung bestehender relevanter Daten, Standards, Richtlinien und Komponenten.",
-        "Barrierefreiheit und Anforderungen für Barrierefreiheit sind ermöglicht."
-    ],
-    "Datenschutz & Informationssicherheit": [
-        "Der Erfüllungsaufwand berücksichtigt die für die Erfüllung der Vorgaben der Informationssicherheit notwendigen finanziellen und personellen Ressourcen.",
-        "Es wurden Datenschutz-Expertise und IT-Sicherheitsexpertise konsultiert oder berücksichtigt",
-        "(Gesetzliche) Anforderungen des Datenschutzes, insbesondere der Datensparsamkeit, und der Informationssicherheit sind berücksichtigt"
-    ],
-    "Klare Regelungen für eine digitale Ausführung": [
-        "Die Regelungen wurden mit am Vollzug beteiligten Verwaltungen, Unternehmen, Organisationen oder Bürgerinnen und Bürgern auf Verständlichkeit getestet.",
-        "Bei verfahrenstechnischen Anforderungen kann das Regelungsvorhaben in Aufgaben bzw. chronologische Schritte übersetzt werden.",
-        "Klare Entscheidungsstrukturen liegen vor durch eindeutige Kriterien sowie kohärente und logische Systematik. Ausnahmen sind klar gekennzeichnet.",
-        "Rechtsbegriffe sind harmonisiert. Alle Begriffe sind klar und eindeutig. Auslegungen verhindern eine einheitliche Umsetzung."
-    ],
-    "Automatisierung ermöglichen": [
-        "IT-Expertise wurde bei der Erstellung einbezogen.",
-        "Das Regelungsvorhaben schafft rechtliche Voraussetzungen für automatisierte und/oder antragslose Verfahren.",
-        "Klare Entscheidungsstrukturen liegen vor; durch eindeutige Kriterien sowie kohärente und logische Systematik.",
-        "Rechtsbegriffe sind harmonisiert. Alle Begriffe sind klar und eindeutig. Auslegungen verhindern die vollständige Automatisierung von Umsetzungsprozessen."
-    ]
-}
-
-# STEP 1 ANALYZING LAW
-
-def analyze_text_with_llm(law_text, principles):
-    all_checks = []
-    for principle_group, checks in principles.items():
-        all_checks.append(f"**{principle_group}:**")
-        all_checks.extend([f"- {check}" for check in checks])
-    checks_list = "\n".join(all_checks)
+    print("Selected model: "+selectedModel)
 
     prompt = (
     f"""
-    Das folgende Dokument ist ein Gesetz: {law_text}\n\n
-    "Der Digitalcheck unterstützt bei der Erarbeitung von digitaltauglichen Regelungsvorhaben.
+    Analysiere das am Ende gegebene Gesetz darauf, ob es folgende Prinzipien des Digitalchecks einhält: {helper.digital_check_prinzipien}\n\n
+    
     Beurteile, ob das Gesetz die Prinzipien unten erfüllt. Gib die Antwort zwingend entsprechend der folgenden JSON-Datenstruktur zurück:
 
-    {{
-      "Digitale Kommunikation": [
+      "prinzipien": [
         {{
-          "Prinzip": "Der Inhalt des Regelungsvorhabens ist technologieoffen.",
-          "Erfüllt": true/false/null,
-          "Begründung": "string",
-          "Zitat": "string"/null,
-          "Änderungsvorschlag": "string"
-        }}
-      ],
-      "Wiederverwendung von Daten & Standards": [
+          "prinzip": "Digitale Kommunikation sicherstellen",
+          "verstoss": true,
+          "begruendung": "Die Vorschrift verlangt eine schriftliche Anzeige, ohne eine digitale Alternative vorzusehen. Dies führt zu Medienbrüchen und verhindert eine vollständig digitale Kommunikation.",
+          "zitierte_passagen": [
+            "§ 30 (1) [...] dem für die Verwaltung der Erbschaftsteuer zuständigen Finanzamt schriftlich anzuzeigen.",
+            "§ 30 (5) [...] der Vermögensübergang dem nach § 35 Absatz 4 zuständigen Finanzamt schriftlich anzuzeigen."
+          ],
+          "verbesserungsvorschlag": "Eine Einreichungsmöglichkeit in elektronischer Form oder Textform ermöglichen."
+        }},
         {{
-          "Bestehende Datenerfassungs- und Austauschverfahren, Register und weitere Quellen werden berücksichtigt und nicht erneut erfasst.",
-          "Erfüllt": true/false/null,
-          "Begründung": "string",
-          "Zitat": "string"/null,
-          "Änderungsvorschlag": "string"
-        }}
-      ],
-      "Datenschutz & Informationssicherheit": [
+          "prinzip": "Wiederverwendung von Daten & Standards ermöglichen",
+          "verstoss": true,
+          "begruendung": "Bestehende Register (z. B. Grundbuch, Melderegister, Steuer-ID) werden nicht genutzt. Betroffene müssen Informationen erneut eingeben, obwohl sie bereits in anderen Behörden vorliegen.",
+          "zitierte_passagen": [
+            "§ 30 (4) Die Anzeige soll folgende Angaben enthalten: 1. Vorname und Familienname, Identifikationsnummer (§ 139b der Abgabenordnung), Beruf, Wohnung des Erblassers oder Schenkers und des Erwerbers;",
+            "§ 30 (4) 3. Gegenstand und Wert des Erwerbs;"
+          ],
+          "verbesserungsvorschlag": "Soweit die Daten den Behörden bereits vorliegen, die Notwendigkeit einer erneuten Datenübermittlung streichen. Die Behörde könnte dabei auf Steuer-ID und andere Register zugreifen, um diese Daten zu erlangen."
+        }},
         {{
-          "Prinzip": "(Gesetzliche) Anforderungen des Datenschutzes, insbesondere der Datensparsamkeit, und der Informationssicherheit sind berücksichtigt",
-          "Erfüllt": true/false/null,
-          "Begründung": "string",
-          "Zitat": "string"/null,
-          "Änderungsvorschlag": "string"
-        }}
-      ],
-      "Klare Regelungen für eine digitale Ausführung": [
+          "prinzip": "Datenschutz & Informationssicherheit gewährleisten",
+          "verstoss": true,
+          "begruendung": "Es gibt keine expliziten Vorgaben zur sicheren Verarbeitung und Speicherung der personenbezogenen Daten. Datenschutz und IT-Sicherheit sind nicht berücksichtigt.",
+          "zitierte_passagen": [
+            "§ 30 (4) Die Anzeige soll folgende Angaben enthalten: 1. Vorname und Familienname, Identifikationsnummer (§ 139b der Abgabenordnung), Beruf, Wohnung des Erblassers oder Schenkers und des Erwerbers;"
+          ],
+          "verbesserungsvorschlag": "Datensparsamkeit durch Minimaldatenerhebung sicherstellen."
+        }},
         {{
-          "Klare Entscheidungsstrukturen liegen vor durch eindeutige Kriterien sowie kohärente und logische Systematik. Ausnahmen sind klar gekennzeichnet.",
-          "Erfüllt": true/false/null,
-          "Begründung": "string",
-          "Zitat": "string"/null,
-          "Änderungsvorschlag": "string"
-        }}
-      ],
-      "Automatisierung": [
+          "prinzip": "Klare Regelungen für eine digitale Ausführung finden",
+          "verstoss": true,
+          "begruendung": "Die Regelung enthält keine spezifischen Anforderungen für eine digitale Prozessgestaltung. Es fehlen klare Schritte für eine digitale Anzeige und Harmonisierung der Begriffe.",
+          "zitierte_passagen": [
+            "§ 30 (4) Die Anzeige soll folgende Angaben enthalten: [...]"
+          ],
+          "verbesserungsvorschlag": "Klare Verfahrensschritte für ein digitales Meldesystem definieren, z. B. durch eine Online-Plattform mit strukturierten Eingabefeldern und Validierungsmöglichkeiten."
+        }},
         {{
-          "Das Regelungsvorhaben schafft rechtliche Voraussetzungen für automatisierte und/oder antragslose Verfahren.",
-          "Erfüllt": true/false/null,
-          "Begründung": "string",
-          "Zitat": "string"/null,
-          "Änderungsvorschlag": "string"
+          "prinzip": "Automatisierung ermöglichen",
+          "verstoss": true,
+          "begruendung": "Die Vorschrift verlangt eine manuelle Anzeige und ermöglicht keine automatisierten oder antragslosen Verfahren. Es gibt keine rechtlichen Voraussetzungen für eine automatisierte Verarbeitung der Daten.",
+          "zitierte_passagen": [
+            "§ 30 (1) Jeder der Erbschaftsteuer unterliegende Erwerb [...] ist schriftlich anzuzeigen.",
+            "§ 30 (5) [...] schriftlich anzuzeigen."
+          ],
+          "verbesserungsvorschlag": "Rechtliche Grundlagen für eine automatisierte Bearbeitung schaffen, z. B. durch standardisierte digitale Schnittstellen, automatische Registerabfragen und vorbefüllte Online-Formulare."
         }}
       ]
-    }}
+    
 
     Für jedes Prinzip:
     - `"Erfüllt"`: Gebe `true` zurück, wenn das Prinzip erfüllt ist, `false`, wenn es nicht erfüllt ist, oder `null`, wenn keine Aussage möglich ist.
-    - `"Begründung"`: Erkläre prägnant, warum das Prinzip erfüllt oder nicht erfüllt ist. Zitiere die entsprechende Passage im Gesetz mit Absatz/Satz/Nummer usw.
-    - `"Zitat"`: Zitiere den entsprechenden Worlaut im Gesetzestext, wenn das Prinzip nicht erfüllt ist. Wenn das Prinzip erfüllt ist oder kein Aussage möglich gebe `null` zurück."
-    - `"Änderungsvorschlag"`: Wie würdest du den Gesetzestext ändern um das Prinzip zu berücksichtigen? Wenn das Prinzip erfüllt ist oder kein Aussage möglich gebe `null` zurück."
+    - `"Begründung"`: Erkläre prägnant, warum das Prinzip erfüllt oder nicht erfüllt ist. Zitiere die entsprechende Passagen im Gesetz mit Absatz/Satz/Nummer usw.
+    - `"Zitat"`: Zitiere die entsprechenden Passagen des Gesetzestextes im Wortlaut, für die das Prinzip nicht erfüllt ist. Wenn das Prinzip erfüllt ist oder keine Aussage möglich ist, gebe `null` zurück.
+    - `"Änderungsvorschlag"`: Wie würdest du den Gesetzestext ändern, um das Prinzip zu berücksichtigen? Wenn das Prinzip erfüllt ist oder keine Aussage möglich ist, gebe `null` zurück.
 
-    **Prinzipien:**
-    {checks_list}
+    Das Gesetz lautet: {law_text}
     """
     )
 
@@ -151,7 +118,8 @@ def analyze_text_with_llm(law_text, principles):
         response = client.chat.completions.create(
             model=selectedModel,
             messages=[{"role": "user", "content": prompt}],
-            response_format={ "type": "json_object" }
+            # Not all models support response formatting
+            response_format={ "type": "json_object" } if selectedModel in ["chatgpt-4o-latest", "gpt-4o-mini", "meta-llama/Llama-3.3-70B-Instruct", "meta-llama/Meta-Llama-3.1-8B-Instruct", "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"] else None
         )
         print("\nToken Usage:")
         print(f"Input tokens: {response.usage.prompt_tokens}")
@@ -161,138 +129,112 @@ def analyze_text_with_llm(law_text, principles):
         return f"Error occurred: {e}"
 
     reply = response.choices[0].message.content.strip()
-    print(reply)
     return reply
 
-# STEP 2 PARSING JSON
-def parse_json(result):
-    try:
-        # Parse the JSON response
-        result_json = json.loads(result)
+# # STEP 2 AMENDING LAW
+
+# def generate_amended_law(law_text, input_response):
+    
+#     prompt = f"""
+#     Als erfahrener Rechtsexperte, überarbeite bitte den am Ende gegebenen Gesetzestext unter Berücksichtigung der im folgenden JSON enthaltenen Änderungsvorschlägen: {input_response}\n\n
+    
+#     Das Gesetz lautet: {law_text}
+
+#     Gib den überarbeiteten Gesetzestext in seiner Gesamtheit zurück. Markiere geänderte oder neue Passagen durch [[ ]] Klammern.
+#     """    
+#     try:
+#         # Select the appropriate client and model based on selectedModel
+#         if selectedModel in availableModels["openai"]:
+#             client = openaiClient
+#         elif selectedModel in availableModels["deepinfra"]:
+#             client = deepinfraClient
+#         else:
+#             raise ValueError(f"Selected model {selectedModel} not found in available models")
+
+#         response = client.chat.completions.create(
+#             model=selectedModel,
+#             messages=[{"role": "user", "content": prompt}]
+#         )
         
-        # Extract improvement suggestions only for items where Erfüllt is false
-        improvement_suggestions = []
+#         print("\nToken Usage for Law Amendment:")
+#         print(f"Input tokens: {response.usage.prompt_tokens}")
+#         print(f"Output tokens: {response.usage.completion_tokens}")
+#         print(f"Total tokens: {response.usage.total_tokens}")
         
-        for category, items in result_json.items():
-            for item in items:
-                if item.get("Erfüllt") == False and item.get("Änderungsvorschlag") is not None and item["Änderungsvorschlag"] != "null":
-                    improvement_suggestions.append({
-                        "category": category,
-                        "principle": item["Prinzip"],
-                        "zitat": item["Zitat"],
-                        "suggestion": item["Änderungsvorschlag"]
-                    })
-
-        print("\nImprovement Suggestions for unfulfilled principles:")
-        for suggestion in improvement_suggestions:
-            print(f"\nCategory: {suggestion['category']}")
-            print(f"Principle: {suggestion['principle']}")
-            print(f"Zitat: {suggestion['zitat']}")
-            print(f"Suggestion: {suggestion['suggestion']}")
-            
-        return improvement_suggestions
-
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON response: {e}")
-        return None
-    except Exception as e:
-        print(f"Error processing results: {e}")
-        return None
-
-
-# STEP 3 AMENDING LAW
-
-def generate_amended_law(law_text, improvement_suggestions):
-    """
-    Generate an amended version of the law text based on improvement suggestions.
-    
-    Args:
-        law_text (str): The original law text
-        improvement_suggestions (list): List of dictionaries containing improvement suggestions
-    
-    Returns:
-        str: The LLM response containing the amended law text
-    """
-    # Format suggestions for the prompt
-    formatted_suggestions = []
-    for suggestion in improvement_suggestions:
-        formatted_suggestions.append(
-            f"'{suggestion['suggestion']}"
-        )
-    
-    suggestions_text = "\n".join(formatted_suggestions)
-    
-    prompt = f"""
-    Als erfahrener Rechtsexperte, überarbeite bitte den folgenden Gesetzestext unter Berücksichtigung der Änderungsvorschläge für die digitale Transformation. 
-    
-    Ursprünglicher Gesetzestext:
-    {law_text}
-
-    Zu berücksichtigende Änderungsvorschläge:
-    {suggestions_text}
-
-    Gib den überarbeiteten Gesetzestext in seiner Gesamtheit zurück. Markiere geänderte oder neue Passagen durch [[ ]] Klammern.
-    """
-
-    print(prompt)
-    
-    try:
-        # Select the appropriate client and model based on selectedModel
-        if selectedModel in availableModels["openai"]:
-            client = openaiClient
-        elif selectedModel in availableModels["deepinfra"]:
-            client = deepinfraClient
-        else:
-            raise ValueError(f"Selected model {selectedModel} not found in available models")
-
-        response = client.chat.completions.create(
-            model=selectedModel,
-            messages=[{"role": "user", "content": prompt}]
-        )
+#         return response.choices[0].message.content.strip()
         
-        print("\nToken Usage for Law Amendment:")
-        print(f"Input tokens: {response.usage.prompt_tokens}")
-        print(f"Output tokens: {response.usage.completion_tokens}")
-        print(f"Total tokens: {response.usage.total_tokens}")
-        
-        return response.choices[0].message.content.strip()
-        
-    except Exception as e:
-        return f"Error generating amended law: {e}"
+#     except Exception as e:
+#         return f"Error generating amended law: {e}"
 
-if __name__ == "__main__":
-    print("Enter the law text (type 'END' on a new line and press enter to finish):")
-    # Initialize an empty list to collect lines of input
-    law_text_lines = []
-
-    # Collect input until the user types 'END'
-    while True:
-        line = input()
-        if line.strip().upper() == "END":  # End the input if the user types 'END'
-            break
-        law_text_lines.append(line)
-
-    # Join all lines into a single string
-    law_text = "\n".join(law_text_lines)
-
-    print("Law text entered:")
-    print(law_text)
-
-    # The rest of the script follows as before
+def analyze_law(law_text, selectedModel):
+    
     print("Analyzing law started ...")
-    result = analyze_text_with_llm(law_text, principles)
+
+
+    try: 
+
+      result = analyze_text_with_llm(law_text, selectedModel)
+            
+      return result
+
+    except Exception as e:
+      return f"Error: {str(e)}", "Error in analyze_law: {str(e)}"
+
+
     if result:
         print("Analyzing law completed.")
-        print(result)
-         # STEP 2, see above
-        print("Parsing returned JSON started ...")
-        improvement_suggestions = parse_json(result)
-        print("Parsing returned JSON completed")
-        print(improvement_suggestions)
-        if improvement_suggestions:
-            print("Amending law started ...")
-             # STEP 3, see above
-            amended_law = generate_amended_law(law_text, improvement_suggestions)
-            if amended_law: 
-                print("Amending law completed. Amended law text:")
-                print(amended_law)
+        # # STEP 2, see above
+        # amended_law = generate_amended_law(law_text, result)
+        # if amended_law: 
+        #     print("Amending law completed.")
+
+
+
+
+
+#DEPLOY USING GRADIO
+
+# Flatten model list for dropdown
+all_models = []
+for provider, models in availableModels.items():
+    all_models.extend(models)
+
+# Create Gradio interface
+def create_interface():
+    with gr.Blocks(title="Digitalcheck LLM") as interface:
+        gr.Markdown("# Digitalcheck LLM")
+        gr.Markdown("Analyze laws for compliance to Digitalcheck principles.")
+        
+        with gr.Row():
+            with gr.Column():
+                model_dropdown = gr.Dropdown(
+                    choices=all_models,
+                    value=all_models[0],
+                    label="Select Model"
+                )
+                law_input = gr.Textbox(
+                    lines=10,
+                    label="Input Law Text",
+                    placeholder="Paste the law text here...",
+                    value=helper.sample_law
+                )
+                analyze_button = gr.Button("Analyze Law", variant="primary")
+            
+            with gr.Column():
+                analysis_output = gr.Textbox(label="Analysis Result")
+                # amended_law_output = gr.Textbox(
+                #     lines=10,
+                #     label="Amended Law Suggestion"
+                # )
+        
+        analyze_button.click(
+            fn=analyze_law,
+            inputs=[law_input, model_dropdown],
+            outputs=[analysis_output]
+        )
+    
+    return interface
+
+if __name__ == "__main__":
+    interface = create_interface()
+    interface.launch(share=False)

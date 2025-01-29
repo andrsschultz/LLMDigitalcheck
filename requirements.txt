@@ -1,2 +1,3 @@
 openai
-python-dotenv==1.0.0
+gradio
+python-dotenv
