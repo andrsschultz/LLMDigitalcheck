@@ -8,7 +8,7 @@ import helper
 # Load environment variables from .env file
 load_dotenv()
 
-# Retrieve the OPENAI_API_KEY and DEEPINFRA_API_KEY
+# Retrieve OPENAI_API_KEY and/or DEEPINFRA_API_KEY
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     raise ValueError("OPENAI_API_KEY environment variable is not set.")
@@ -16,23 +16,25 @@ deepinfra_api_key = os.getenv("DEEPINFRA_API_KEY")
 if not deepinfra_api_key:
     raise ValueError("DEEPINFRA_API_KEY environment variable is not set.")
 
-# Initialize OpenAI and DeepInfra API
+# Initialize OpenAI and DeepInfra API client
 openaiClient = OpenAI(
-    api_key=openai_api_key,  # Use environment variable for API key
+    api_key=openai_api_key,  
 )
 deepinfraClient = OpenAI(
     api_key=deepinfra_api_key,  # Use environment variable for API key
-    base_url="https://api.deepinfra.com/v1/openai",  # DeepInfra endpoint 
+    base_url="https://api.deepinfra.com/v1/openai",
 )
 
 # Available models configuration
+# Note: Some models may output truncated output due to max token limitation
+# Note: Some models may not conform to JSON response format, see below 
 availableModels = {
     "openai": ["chatgpt-4o-latest", "gpt-4o-mini", "o1-mini", "o1-preview", "o1"],
     "deepinfra": ["meta-llama/Llama-3.3-70B-Instruct", "meta-llama/Meta-Llama-3.1-8B-Instruct", "deepseek-ai/DeepSeek-R1", "deepseek-ai/DeepSeek-R1-Distill-Llama-70B", "deepseek-ai/DeepSeek-V3"]
 }
 
-# Selected model for upcoming analysis
-selectedModel =  "meta-llama/Meta-Llama-3.1-8B-Instruct"  # Can be changed to any model listed in availableModels
+# Select model for analysis
+selectedModel =  "chatgpt-4o-latest"  # Can be changed to any model listed in availableModels
 
 # STEP 1 ANALYZING LAW
 
@@ -53,7 +55,7 @@ def analyze_text_with_llm(law_text):
             "§ 30 (1) [...] dem für die Verwaltung der Erbschaftsteuer zuständigen Finanzamt schriftlich anzuzeigen.",
             "§ 30 (5) [...] der Vermögensübergang dem nach § 35 Absatz 4 zuständigen Finanzamt schriftlich anzuzeigen."
           ],
-          "verbesserungsvorschlag": "Eine digitale Einreichungsmöglichkeit über ein Online-Portal oder eine API für Steuerberater und Notare schaffen. Die Schriftform könnte durch eine digitale Signatur oder eine Identifikationsnummer ersetzt werden."
+          "verbesserungsvorschlag": "Eine Einreichungsmöglichkeit in elektronischer Form oder Textform ermöglichen."
         }},
         {{
           "prinzip": "Wiederverwendung von Daten & Standards ermöglichen",
@@ -63,7 +65,7 @@ def analyze_text_with_llm(law_text):
             "§ 30 (4) Die Anzeige soll folgende Angaben enthalten: 1. Vorname und Familienname, Identifikationsnummer (§ 139b der Abgabenordnung), Beruf, Wohnung des Erblassers oder Schenkers und des Erwerbers;",
             "§ 30 (4) 3. Gegenstand und Wert des Erwerbs;"
           ],
-          "verbesserungsvorschlag": "Automatische Datenübernahme aus vorhandenen Registern ermöglichen (Once-Only-Prinzip). Das Finanzamt könnte auf Steuer-ID und andere Register zugreifen, um manuelle Dateneingaben zu reduzieren."
+          "verbesserungsvorschlag": "Soweit die Daten den Behörden bereits vorliegen, die Notwendigkeit einer erneuten Datenübermittlung streichen. Die Behörde könnte dabei auf Steuer-ID und andere Register zugreifen, um diese Daten zu erlangen."
         }},
         {{
           "prinzip": "Datenschutz & Informationssicherheit gewährleisten",
@@ -72,7 +74,7 @@ def analyze_text_with_llm(law_text):
           "zitierte_passagen": [
             "§ 30 (4) Die Anzeige soll folgende Angaben enthalten: 1. Vorname und Familienname, Identifikationsnummer (§ 139b der Abgabenordnung), Beruf, Wohnung des Erblassers oder Schenkers und des Erwerbers;"
           ],
-          "verbesserungsvorschlag": "Datensparsamkeit durch Minimaldatenerhebung sicherstellen. Datenschutz- und IT-Sicherheitsexperten sollten in die Gesetzgebung einbezogen werden. Eine verschlüsselte digitale Übertragung der Daten sollte ermöglicht werden."
+          "verbesserungsvorschlag": "Datensparsamkeit durch Minimaldatenerhebung sicherstellen."
         }},
         {{
           "prinzip": "Klare Regelungen für eine digitale Ausführung finden",
@@ -119,7 +121,7 @@ def analyze_text_with_llm(law_text):
             model=selectedModel,
             messages=[{"role": "user", "content": prompt}],
             #Comment line below if selected model does not allow for response formatting
-            #response_format={ "type": "json_object" }
+            response_format={ "type": "json_object" }
         )
         print("\nToken Usage:")
         print(f"Input tokens: {response.usage.prompt_tokens}")
@@ -129,7 +131,6 @@ def analyze_text_with_llm(law_text):
         return f"Error occurred: {e}"
 
     reply = response.choices[0].message.content.strip()
-    print(reply)
     return reply
 
 # STEP 2 AMENDING LAW
@@ -193,7 +194,7 @@ if __name__ == "__main__":
     print("Analyzing law started ...")
     result = analyze_text_with_llm(law_text)
     if result:
-        print("Analyzing law completed.")
+        print("Analyzing law completed. Response:")
         print(result)
         # STEP 2, see above
         amended_law = generate_amended_law(law_text, result)
