@@ -129,7 +129,8 @@ def analyze_text_with_llm(law_text, selectedModel):
         return f"Error occurred: {e}"
 
     reply = response.choices[0].message.content.strip()
-    return reply
+    token_usage = f"Token Usage:\nInput tokens: {response.usage.prompt_tokens}\nOutput tokens: {response.usage.completion_tokens}\nTotal tokens: {response.usage.total_tokens}"
+    return reply, token_usage
 
 # # STEP 2 AMENDING LAW
 
@@ -175,10 +176,11 @@ def analyze_law(law_text, selectedModel):
 
       result = analyze_text_with_llm(law_text, selectedModel)
             
-      return result
+      result, token_usage = result
+      return result, token_usage
 
     except Exception as e:
-      return f"Error: {str(e)}", "Error in analyze_law: {str(e)}"
+      return f"Error: {str(e)}", "Error occurred, no token usage available."
 
 
     if result:
@@ -209,7 +211,7 @@ def create_interface():
             with gr.Column():
                 model_dropdown = gr.Dropdown(
                     choices=all_models,
-                    value=all_models[0],
+                    value=all_models[6],
                     label="Select Model"
                 )
                 law_input = gr.Textbox(
@@ -222,6 +224,7 @@ def create_interface():
             
             with gr.Column():
                 analysis_output = gr.Textbox(label="Analysis Result")
+                token_usage_output = gr.Textbox(label="Token Usage", lines=4)
                 # amended_law_output = gr.Textbox(
                 #     lines=10,
                 #     label="Amended Law Suggestion"
@@ -230,7 +233,7 @@ def create_interface():
         analyze_button.click(
             fn=analyze_law,
             inputs=[law_input, model_dropdown],
-            outputs=[analysis_output]
+            outputs=[analysis_output, token_usage_output]
         )
     
     return interface

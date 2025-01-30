@@ -1,10 +1,12 @@
-sample_law = """
-Erbschaftsteuer- und Schenkungsteuergesetz (ErbStG)
+sample_law = """ Erbschaftsteuer- und Schenkungsteuergesetz (ErbStG)
 § 30 Anzeige des Erwerbs
 
 (1) Jeder der Erbschaftsteuer unterliegende Erwerb (§ 1) ist vom Erwerber, bei einer Zweckzuwendung vom Beschwerten binnen einer Frist von drei Monaten nach erlangter Kenntnis von dem Anfall oder von dem Eintritt der Verpflichtung dem für die Verwaltung der Erbschaftsteuer zuständigen Finanzamt schriftlich anzuzeigen.
+
 (2) Erfolgt der steuerpflichtige Erwerb durch ein Rechtsgeschäft unter Lebenden, ist zur Anzeige auch derjenige verpflichtet, aus dessen Vermögen der Erwerb stammt.
+
 (3) Einer Anzeige bedarf es nicht, wenn der Erwerb auf einer von einem deutschen Gericht, einem deutschen Notar oder einem deutschen Konsul eröffneten Verfügung von Todes wegen beruht und sich aus der Verfügung das Verhältnis des Erwerbers zum Erblasser unzweifelhaft ergibt; das gilt nicht, wenn zum Erwerb Grundbesitz, Betriebsvermögen, Anteile an Kapitalgesellschaften, die nicht der Anzeigepflicht nach § 33 unterliegen, oder Auslandsvermögen gehört. Einer Anzeige bedarf es auch nicht, wenn eine Schenkung unter Lebenden oder eine Zweckzuwendung gerichtlich oder notariell beurkundet ist.
+
 (4) Die Anzeige soll folgende Angaben enthalten:
 
 1. Vorname und Familienname, Identifikationsnummer (§ 139b der Abgabenordnung), Beruf, Wohnung des Erblassers oder Schenkers und des Erwerbers;
@@ -21,7 +23,6 @@ Erbschaftsteuer- und Schenkungsteuergesetz (ErbStG)
 3. Zweck der Stiftung oder des Vereins,
 4. Zeitpunkt des ersten Vermögensübergangs auf die Stiftung oder den Verein,
 5. Wert und Zusammensetzung des Vermögens.
-
 """
 
 
